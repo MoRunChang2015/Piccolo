@@ -17,7 +17,16 @@ void main()
 
     highp vec4 color       = subpassLoad(in_color).rgba;
     
+    highp float left_offset = floor(color.b * _COLORS) / _COLORS;
+    highp float right_offset = ceil(color.b * _COLORS) / _COLORS;
+
+    highp vec2 uv_left = vec2(color.r / _COLORS + left_offset, color.g);
+    highp vec2 uv_right = vec2(color.r / _COLORS + right_offset, color.g);
+
     // texture(color_grading_lut_texture_sampler, uv)
 
-    out_color = color;
+    highp vec4 left_color = texture(color_grading_lut_texture_sampler, uv_left);
+    highp vec4 right_color = texture(color_grading_lut_texture_sampler, uv_right);
+
+    out_color = mix(left_color, right_color, (color.b - left_offset) * _COLORS);
 }
