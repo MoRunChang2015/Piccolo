@@ -233,14 +233,34 @@ namespace Pilot
         forward_lighting_pass.preserveAttachmentCount = 0;
         forward_lighting_pass.pPreserveAttachments    = NULL;
 
+        VkAttachmentReference glitch_pass_input_attachment_reference {};
+        glitch_pass_input_attachment_reference.attachment =
+            &backup_odd_color_attachment_description - attachments;
+        glitch_pass_input_attachment_reference.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+        VkAttachmentReference glitch_pass_color_attachment_reference {};
+        glitch_pass_color_attachment_reference.attachment =
+            &backup_even_color_attachment_description - attachments;
+        glitch_pass_color_attachment_reference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+        VkSubpassDescription& glitch_pass   = subpasses[_main_camera_subpass_glitch];
+        glitch_pass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        glitch_pass.inputAttachmentCount    = 1;
+        glitch_pass.pInputAttachments       = &glitch_pass_input_attachment_reference;
+        glitch_pass.colorAttachmentCount    = 1;
+        glitch_pass.pColorAttachments       = &glitch_pass_color_attachment_reference;
+        glitch_pass.pDepthStencilAttachment = NULL;
+        glitch_pass.preserveAttachmentCount = 0;
+        glitch_pass.pPreserveAttachments    = NULL;
+
         VkAttachmentReference tone_mapping_pass_input_attachment_reference {};
         tone_mapping_pass_input_attachment_reference.attachment =
-            &backup_odd_color_attachment_description - attachments;
+            &backup_even_color_attachment_description - attachments;
         tone_mapping_pass_input_attachment_reference.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
         VkAttachmentReference tone_mapping_pass_color_attachment_reference {};
         tone_mapping_pass_color_attachment_reference.attachment =
-            &backup_even_color_attachment_description - attachments;
+            &backup_odd_color_attachment_description - attachments;
         tone_mapping_pass_color_attachment_reference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
         VkSubpassDescription& tone_mapping_pass   = subpasses[_main_camera_subpass_tone_mapping];
@@ -255,12 +275,12 @@ namespace Pilot
 
         VkAttachmentReference color_grading_pass_input_attachment_reference {};
         color_grading_pass_input_attachment_reference.attachment =
-            &backup_even_color_attachment_description - attachments;
+            &backup_odd_color_attachment_description - attachments;
         color_grading_pass_input_attachment_reference.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
         VkAttachmentReference color_grading_pass_color_attachment_reference {};
         color_grading_pass_color_attachment_reference.attachment =
-            &backup_odd_color_attachment_description - attachments;
+            &backup_even_color_attachment_description - attachments;
         color_grading_pass_color_attachment_reference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
         VkSubpassDescription& color_grading_pass   = subpasses[_main_camera_subpass_color_grading];
@@ -274,10 +294,10 @@ namespace Pilot
         color_grading_pass.pPreserveAttachments    = NULL;
 
         VkAttachmentReference ui_pass_color_attachment_reference {};
-        ui_pass_color_attachment_reference.attachment = &backup_even_color_attachment_description - attachments;
+        ui_pass_color_attachment_reference.attachment = &backup_odd_color_attachment_description - attachments;
         ui_pass_color_attachment_reference.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-        uint32_t ui_pass_preserve_attachment = &backup_odd_color_attachment_description - attachments;
+        uint32_t ui_pass_preserve_attachment = &backup_even_color_attachment_description - attachments;
 
         VkSubpassDescription& ui_pass   = subpasses[_main_camera_subpass_ui];
         ui_pass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
@@ -291,10 +311,10 @@ namespace Pilot
 
         VkAttachmentReference combine_ui_pass_input_attachments_reference[2] = {};
         combine_ui_pass_input_attachments_reference[0].attachment =
-            &backup_odd_color_attachment_description - attachments;
+            &backup_even_color_attachment_description - attachments;
         combine_ui_pass_input_attachments_reference[0].layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         combine_ui_pass_input_attachments_reference[1].attachment =
-            &backup_even_color_attachment_description - attachments;
+            &backup_odd_color_attachment_description - attachments;
         combine_ui_pass_input_attachments_reference[1].layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
         VkAttachmentReference combine_ui_pass_color_attachment_reference {};
@@ -312,7 +332,7 @@ namespace Pilot
         combine_ui_pass.preserveAttachmentCount = 0;
         combine_ui_pass.pPreserveAttachments    = NULL;
 
-        VkSubpassDependency dependencies[7] = {};
+        VkSubpassDependency dependencies[8] = {};
 
         VkSubpassDependency& deferred_lighting_pass_depend_on_shadow_map_pass = dependencies[0];
         deferred_lighting_pass_depend_on_shadow_map_pass.srcSubpass           = VK_SUBPASS_EXTERNAL;
@@ -349,20 +369,34 @@ namespace Pilot
             VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
         forward_lighting_pass_depend_on_deferred_lighting_pass.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
-        VkSubpassDependency& tone_mapping_pass_depend_on_lighting_pass = dependencies[3];
-        tone_mapping_pass_depend_on_lighting_pass.srcSubpass           = _main_camera_subpass_forward_lighting;
-        tone_mapping_pass_depend_on_lighting_pass.dstSubpass           = _main_camera_subpass_tone_mapping;
-        tone_mapping_pass_depend_on_lighting_pass.srcStageMask =
-            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        tone_mapping_pass_depend_on_lighting_pass.dstStageMask =
-            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        tone_mapping_pass_depend_on_lighting_pass.srcAccessMask =
-            VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        tone_mapping_pass_depend_on_lighting_pass.dstAccessMask =
-            VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
-        tone_mapping_pass_depend_on_lighting_pass.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
-        VkSubpassDependency& color_grading_pass_depend_on_tone_mapping_pass = dependencies[4];
+        VkSubpassDependency& glitch_pass_depend_on_lighting_pass = dependencies[3];
+        glitch_pass_depend_on_lighting_pass.srcSubpass           = _main_camera_subpass_forward_lighting;
+        glitch_pass_depend_on_lighting_pass.dstSubpass           = _main_camera_subpass_glitch;
+        glitch_pass_depend_on_lighting_pass.srcStageMask =
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        glitch_pass_depend_on_lighting_pass.dstStageMask =
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        glitch_pass_depend_on_lighting_pass.srcAccessMask =
+            VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        glitch_pass_depend_on_lighting_pass.dstAccessMask =
+            VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+        glitch_pass_depend_on_lighting_pass.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+        VkSubpassDependency& tone_mapping_pass_depend_on_glitch_pass = dependencies[4];
+        tone_mapping_pass_depend_on_glitch_pass.srcSubpass           = _main_camera_subpass_glitch;
+        tone_mapping_pass_depend_on_glitch_pass.dstSubpass           = _main_camera_subpass_tone_mapping;
+        tone_mapping_pass_depend_on_glitch_pass.srcStageMask =
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        tone_mapping_pass_depend_on_glitch_pass.dstStageMask =
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        tone_mapping_pass_depend_on_glitch_pass.srcAccessMask =
+            VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        tone_mapping_pass_depend_on_glitch_pass.dstAccessMask =
+            VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+        tone_mapping_pass_depend_on_glitch_pass.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+        VkSubpassDependency& color_grading_pass_depend_on_tone_mapping_pass = dependencies[5];
         color_grading_pass_depend_on_tone_mapping_pass.srcSubpass           = _main_camera_subpass_tone_mapping;
         color_grading_pass_depend_on_tone_mapping_pass.dstSubpass           = _main_camera_subpass_color_grading;
         color_grading_pass_depend_on_tone_mapping_pass.srcStageMask =
@@ -375,7 +409,7 @@ namespace Pilot
             VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
         color_grading_pass_depend_on_tone_mapping_pass.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
-        VkSubpassDependency& ui_pass_depend_on_color_grading_pass = dependencies[5];
+        VkSubpassDependency& ui_pass_depend_on_color_grading_pass = dependencies[6];
         ui_pass_depend_on_color_grading_pass.srcSubpass           = _main_camera_subpass_color_grading;
         ui_pass_depend_on_color_grading_pass.dstSubpass           = _main_camera_subpass_ui;
         ui_pass_depend_on_color_grading_pass.srcStageMask =
@@ -388,7 +422,7 @@ namespace Pilot
             VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
         ui_pass_depend_on_color_grading_pass.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
-        VkSubpassDependency& combine_ui_pass_depend_on_ui_pass = dependencies[6];
+        VkSubpassDependency& combine_ui_pass_depend_on_ui_pass = dependencies[7];
         combine_ui_pass_depend_on_ui_pass.srcSubpass           = _main_camera_subpass_ui;
         combine_ui_pass_depend_on_ui_pass.dstSubpass           = _main_camera_subpass_combine_ui;
         combine_ui_pass_depend_on_ui_pass.srcStageMask =
@@ -2087,6 +2121,7 @@ namespace Pilot
 
     void PMainCameraPass::draw(PColorGradingPass& color_grading_pass,
                                PToneMappingPass&  tone_mapping_pass,
+                               PGlitchPass&       glitch_pass,
                                PUIPass&           ui_pass,
                                PCombineUIPass&    combine_ui_pass,
                                uint32_t           current_swapchain_image_index,
@@ -2163,6 +2198,10 @@ namespace Pilot
 
         m_p_vulkan_context->_vkCmdNextSubpass(m_command_info._current_command_buffer, VK_SUBPASS_CONTENTS_INLINE);
 
+        glitch_pass.draw();
+
+        m_p_vulkan_context->_vkCmdNextSubpass(m_command_info._current_command_buffer, VK_SUBPASS_CONTENTS_INLINE);
+
         tone_mapping_pass.draw();
 
         m_p_vulkan_context->_vkCmdNextSubpass(m_command_info._current_command_buffer, VK_SUBPASS_CONTENTS_INLINE);
@@ -2204,6 +2243,7 @@ namespace Pilot
 
     void PMainCameraPass::drawForward(PColorGradingPass& color_grading_pass,
                                       PToneMappingPass&  tone_mapping_pass,
+                                      PGlitchPass&       glitch_pass,
                                       PUIPass&           ui_pass,
                                       PCombineUIPass&    combine_ui_pass,
                                       uint32_t           current_swapchain_image_index,
@@ -2251,6 +2291,10 @@ namespace Pilot
         {
             m_p_vulkan_context->_vkCmdEndDebugUtilsLabelEXT(m_command_info._current_command_buffer);
         }
+
+        m_p_vulkan_context->_vkCmdNextSubpass(m_command_info._current_command_buffer, VK_SUBPASS_CONTENTS_INLINE);
+
+        glitch_pass.draw();
 
         m_p_vulkan_context->_vkCmdNextSubpass(m_command_info._current_command_buffer, VK_SUBPASS_CONTENTS_INLINE);
 
